@@ -250,7 +250,7 @@ def get_rag_suggestion_openai(goal: str, client, clean_lemmas, emb_model, bm25_n
 
 st.set_page_config(page_title="Lean Lemma Önerici", layout="centered")
 st.title("Basic Lean/Mathlib Lemma Öneri Sistemi")
-st.markdown("Verdiğiniz `Nat` eşitlik hedefini kanıtlamak için en iyi ilk hamle olabilecek lemmayı önerir. Dataset yalnızca basic lemma'ları içerdiği için (a+b) = a+b veya a*b = b*a şeklindeki lemma'lar ile deneyiniz." )
+st.markdown("Verdiğiniz `Nat` eşitlik hedefini kanıtlamak için en iyi ilk hamle olabilecek lemmayı önerir. Dataset yalnızca basic lemma'ları içerdiği için (a+b) = a+b veya a\*b = b\*a şeklindeki lemma'lar ile deneyiniz." )
 
 data_load_state = st.text("Modeller ve dataset yükleniyor...")
 try:
@@ -285,4 +285,5 @@ if submit_button and user_goal:
         except Exception as e:
             st.error(f"Öneri alınırken bir hata oluştu: {e}")
 elif submit_button and not user_goal:
+
     st.warning("Lütfen bir hedef girin.")
