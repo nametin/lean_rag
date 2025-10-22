@@ -266,7 +266,25 @@ try:
 except Exception as e:
     st.error("api key bulnuamadı")
     st.stop()
+    
+with st.expander("💡 Hangi sorguları deneyebilirim? (Örnekler)"):
+    st.markdown("""
+    **1. Temel Eşitlikler (Başarılı RAG)**
+    * `a + b = b + a`
+    * `(a + b) + c = a + (b + c)`
+    * `a * b = b * a`
+    * `1 * a = a`
 
+    **2. Zorlu Sorgular (RAG'ın Zekasını Test Edin)**
+    * `a + 0 = n` (RAG yanlış bulsa da GPT-4o akıl yürütür)
+    * `a ^ 0 = 1` (RAG bulamaz, GPT-4o kendi bilgisinden `pow_zero`'yu önerir)
+    * `a ^ (b + c) = a ^ b * a ^ c`
+
+    **3. Kapsam Dışı (Filtreleri Test Edin)**
+    * `a < b`
+    * `gcd a b = gcd b a`
+    """)
+    
 with st.form(key="goal_form"):
     user_goal = st.text_input(
         label="Kanıt Hedefinizi Girin:", 
@@ -287,4 +305,5 @@ if submit_button and user_goal:
 elif submit_button and not user_goal:
 
     st.warning("Lütfen bir hedef girin.")
+
 
