@@ -267,7 +267,7 @@ except Exception as e:
     st.error("api key bulnuamadı")
     st.stop()
     
-with st.expander("💡 Hangi sorguları deneyebilirim? (Örnekler)"):
+with st.expander("Hangi sorguları deneyebilirim? (Örnekler)"):
     st.markdown("""
     **1. Temel Eşitlikler (Başarılı RAG)**
     * `a + b = b + a`
@@ -305,5 +305,6 @@ if submit_button and user_goal:
 elif submit_button and not user_goal:
 
     st.warning("Lütfen bir hedef girin.")
+
 
 
