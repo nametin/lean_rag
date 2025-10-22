@@ -57,7 +57,7 @@ Oluşturulan bu context metni ve kullanıcının orijinal hedefi, `gpt-4o` model
     * **TEST 3 (`a ^ 0 = 1`):** "R" adımı boş dönse de, `gpt-4o` kullanıcıya `...ancak, genellikle ... pow_zero lemması kullanılır.` şeklinde bir öneride bulunmuştur.
 
 ## 5. Canlı Demo
-Oluşturduğum web arayüzünü public olarak paylaşamıyorum çünkü her sorguda openai hesabımdan kredi yiyor. Bunun yerine maille iletebilirim. ahmet.metin@sabanciuniv.edu 
+Oluşturduğum web arayüzünü public olarak paylaşamıyorum çünkü her sorguda openai hesabımdan kredi yiyor. Bunun yerine linki maille iletebilirim. ahmet.metin@sabanciuniv.edu 
 
 Veya 6. bölümdeki şekilde yerel çalıştırabilirsiniz.
 
