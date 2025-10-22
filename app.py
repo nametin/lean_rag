@@ -256,7 +256,7 @@ data_load_state = st.text("Modeller ve dataset yükleniyor...")
 try:
     (clean_lemmas, emb_model, bm25_name, 
      bm25_doc, doc_embeddings) = load_all_models_and_data()
-    data_load_state.text("Modeller ve dataset hazır!".format(len(clean_lemmas)))
+    data_load_state.text("HAZIRIM! Lütfen sorunu sor!".format(len(clean_lemmas)))
 except Exception as e:
     st.error(f"model veya dataset hatası")
     st.stop() 
@@ -275,7 +275,7 @@ with st.form(key="goal_form"):
     submit_button = st.form_submit_button(label="Lemma Önerisi Getir")
 
 if submit_button and user_goal:
-    with st.spinner("RAG sistemi çalışıyor... (Retriever arıyor, GPT-4o düşünüyor...)"):
+    with st.spinner("BİR DK DÜŞÜNÜYORUM"):
         try:
             suggestion = get_rag_suggestion_openai(
                 user_goal, client, clean_lemmas, emb_model, 
@@ -287,3 +287,4 @@ if submit_button and user_goal:
 elif submit_button and not user_goal:
 
     st.warning("Lütfen bir hedef girin.")
+
