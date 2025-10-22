@@ -61,6 +61,9 @@ Oluşturduğum web arayüzünü public olarak paylaşamıyorum çünkü her sorg
 
 Veya 6. bölümdeki şekilde yerel çalıştırabilirsiniz.
 
+### Örnek bir ekran görüntüsü
+![Image](https://github.com/user-attachments/assets/f5a05f09-9f5d-402d-9070-ade98d5fcdcc) 
+
 ## 6. Lokal Kurulum
 git clone https://github.com/nametin/lean_rag.git
 
