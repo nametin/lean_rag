@@ -58,11 +58,14 @@ Oluşturulan bu context metni ve kullanıcının orijinal hedefi, `gpt-4o` model
 
 ## 5. Canlı Demo
 Oluşturduğum web arayüzünü public olarak paylaşamıyorum çünkü her sorguda openai hesabımdan kredi yiyor. Bunun yerine maille iletebilirim. ahmet.metin@sabanciuniv.edu 
+
 Veya 6. bölümdeki şekilde yerel çalıştırabilirsiniz.
 
 ## 6. Lokal Kurulum
 git clone https://github.com/nametin/lean_rag.git
+
 cd lean_rag
+
 pip install -r requirements.txt
 
 < Proje kökünde .streamlit adında yeni bir klasör oluşturun. Klasörün içerisinde secrets.toml adında bir dosya oluşturun.
