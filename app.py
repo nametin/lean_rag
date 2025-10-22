@@ -250,7 +250,7 @@ def get_rag_suggestion_openai(goal: str, client, clean_lemmas, emb_model, bm25_n
 
 st.set_page_config(page_title="Lean Lemma Önerici", layout="centered")
 st.title("Basic Lean/Mathlib Lemma Öneri Sistemi")
-st.markdown("Verdiğiniz `Nat` eşitlik hedefini kanıtlamak için en iyi ilk hamle olabilecek lemmayı önerir. Dataset yalnızca basic lemma'ları içerdiği için (a+b) = a+b veya a\*b = b\*a şeklindeki lemma'lar ile deneyiniz." )
+st.markdown("Verdiğiniz `Nat` eşitlik hedefini kanıtlamak için en iyi ilk hamle olabilecek lemmayı önerir. Dataset yalnızca basic lemma'ları içerdiği için (a+b) = a+b veya a\*b = b\*a şeklindeki sorgular ile deneyiniz." )
 
 data_load_state = st.text("Modeller ve dataset yükleniyor...")
 try:
@@ -269,18 +269,18 @@ except Exception as e:
     
 with st.expander("Hangi sorguları deneyebilirim? (Örnekler)"):
     st.markdown("""
-    **1. Temel Eşitlikler (Başarılı RAG)**
+    **1. Temel Eşitlikler (R adımı bulur.)**
     * `a + b = b + a`
     * `(a + b) + c = a + (b + c)`
     * `a * b = b * a`
     * `1 * a = a`
 
-    **2. Zorlu Sorgular (RAG'ın Zekasını Test Edin)**
-    * `a + 0 = n` (RAG yanlış bulsa da GPT-4o akıl yürütür)
-    * `a ^ 0 = 1` (RAG bulamaz, GPT-4o kendi bilgisinden `pow_zero`'yu önerir)
+    **2. R adımı için zorlayıcı: **
+    * `a + 0 = n` 
+    * `a ^ 0 = 1` (R bulamıyor... GPT-4o `pow_zero`'yu önerebilir)
     * `a ^ (b + c) = a ^ b * a ^ c`
 
-    **3. Kapsam Dışı (Filtreleri Test Edin)**
+    **3. Kapsam Dışı (hazırladığım basic dataset < veya gcd gibi operatörleri içermiyor) **
     * `a < b`
     * `gcd a b = gcd b a`
     """)
@@ -305,6 +305,7 @@ if submit_button and user_goal:
 elif submit_button and not user_goal:
 
     st.warning("Lütfen bir hedef girin.")
+
 
 
 
