@@ -1,77 +1,71 @@
-# Lean/Mathlib için Goal-Aware Lemma Öneri Sistemi (RAG)
+# Lean-RAG: Goal-Aware Lemma Suggestion for Lean
 
-## 1. Amaç
+Lean-RAG is a specialized Retrieval-Augmented Generation (RAG) system designed to assist in Automated Theorem Proving. It acts as a "first-move" assistant by suggesting the top-3 most relevant lemmas from the Mathlib library for a given Nat (Natural Number) equality goal.
 
-Lean proof assistant (bir fonksiyonel programlama dili ve interactive theorem prover) ve onun matematik kütüphanesi olan Mathlib kütüphanesinden seçtiğim küçük bir corpus üzerinde, kullanıcı tarafından verilen bir `Nat` eşitlik hedefine yönelik "ilk hamle" olabilecek en iyi 3 lemmayı öneren bir RAG sistemidir.
+## 1. Objective
 
-## 2. Dataset
+The system targets users working with the Lean 4 proof assistant. Using a curated corpus derived from Mathlib, it analyzes a user's proof goal (e.g., a + 0 = a) and retrieves the most applicable equality lemmas to advance the proof state.
 
-Bu proje için temel veri kaynağı olarak Hugging Face üzerinde bulunan `tasksource/leandojo` veri seti kullanılmıştır.
+## 2. Dataset & Curation
+The project utilizes the tasksource/leandojo dataset from Hugging Face as the base source. However, raw Mathlib data is often too noisy for a targeted RAG application. A rigorous cleaning pipeline was implemented to create a focused "Mini-Corpus":
 
-Ancak, `leandojo` tüm Mathlib kütüphanesini içerir. Projenin amacına (basit `Nat` eşitlikleri) uygun, odaklanmış ve gürültüden arındırılmış bir RAG sistemi kurabilmek için bu ham veri seti üzerinde bir temizleme süreci uygulandı:
+1.  **Scope Restriction:**
+    * Filtered to include lemmas strictly from Mathlib/Data/Nat/Basic.lean, Mathlib/Data/Nat/Pow.lean, and Init/Data/Nat/Basic.lean to focus on canonical definitions.
+      
+2.  **Noise Reduction:**
+    * **Equalities Only:** The corpus is restricted to unconditional equality statements (a = b). Complex relations like ≤, <, or ∣ were filtered out.
+    * **Token Ban List:** Lemmas containing out-of-scope or complex tokens (e.g., gcd, cast, Int.cast, ℤ, multichoose) were excluded to maintain domain focus.
 
-1.  **Kapsam Belirleme:**
-    * Veri seti öncelikle sadece `Mathlib/Data/Nat/Basic.lean`, `Mathlib/Data/Nat/Pow.lean` ve `Init/Data/Nat/Basic.lean` (canonical tanımlar için) dosyalarından gelen `Nat` lemmalarını içerecek şekilde filtrelenmiştir.
+3.  **Live Data Validation:**
+    * Since static dataset dumps can be outdated or malformatted, a custom robust_extract_statement function was implemented.
+    * This function uses the lemma's metadata (commit hash and file path) to make live API calls to the GitHub repository, fetching the raw source code. It then parses the clean statement, removing syntax noise (like := or by blocks).
+    * This preprocessing pipeline yielded a high-precision knowledge base of approximately 40 verified lemmas, stored in clean_lemmas_corpus.json.gz to serve as a noise-free ground truth for the retrieval module.
 
-2.  **Gürültü Ayıklama:**
-    * **Sadece Eşitlikler:** Korpusa sadece `a = b` formatındaki *koşulsuz eşitlik* ifadeleri dahil edilmiştir. `≤`, `<`, `∣` bölünebilirlik veya eşitsizlik veya diğer ilişkileri içeren lemmalar ayıklanmıştır.
-    * **Yasaklı Token:** Proje kapsamı dışındaki `gcd`, `cast`, `Int.cast`, `ℤ` , `lt` , `sub`, `mono` veya `multichoose` gibi karmaşık tokenları içeren tüm lemmalar veri setinden çıkarılmıştır.
+## 3. System Architecture:
 
-3.  **Canlı Veri Doğrulama ve Zenginleştirme:**
-    * `leandojo` veri setindeki `statement` metinlerinin her zaman güncel veya doğru formatta olmamasından dolayı, her bir potansiyel lemma için `robust_extract_statement` adında özel bir fonksiyon kullanılmıştır.
-    * Bu fonksiyon, lemmanın `commit` ve `file_path` bilgilerini kullanarak doğrudan GitHub'daki Lean/Mathlib reposuna canlı bir network çağrısı yapmış; lemmanın en güncel, ham kodunu çekmiş, `:=` veya `by` gibi kısımları ayıklayarak temiz bir `statement` elde etmiştir.
-    * Bu adım, veri setindeki `statement`'ların doğruluğunu ve temizliğini garanti altına almıştır.
+The solution implements a classic RAG pipeline with a specialized retrieval strategy:
 
-Bu preprocessing sonucunda, binlerce aday arasından seçilen, hedefe yönelik **~40 adet lemma** içeren bir "mini-korpus" (`clean_lemmas_corpus.json.gz`) oluşturulmuştur. Zaman kısıtlamasından ötürü, dataseti daha fazla büyütemedim...
+### 3.1. (R) Retrieval: Hybrid Search & Aggressive Reranking
 
-## 3. Çözüm Mimarisi:
+The user's goal is processed through a multi-stage pipeline:
 
-Sistem bir RAG mimarisi kullanır:
+1.  **Hybrid Search:** Candidates are retrieved using a weighted combination of:
+    * **Sparse Retrieval (BM25):** Matches exact mathematical notation and keywords.
+    * **Dense Retrieval (Semantic):** Uses sentence-transformers/all-MiniLM-L6-v2 to capture structural similarities.
 
-### 3.1. (R) Retrieval: Hibrit Arama ve Filtreleme
+2.  **Aggressive Filtering & Reranking:**
+    * Candidates containing NOISE_WORDS (e.g., internal definitions like _def) or irrelevant operations (e.g., suggesting pow lemmas if the goal has no exponentiation) are discarded.
+    * Surviving candidates receive a bonus score (S_intent) if they align with the goal's structural intent (e.g., commutativity, associativity, identity properties).
+    * The top-3 lemmas by S_total are passed to the next stage.
 
-Kullanıcının sorgusu (`goal`), özel olarak korpusta aranır:
+### 3.2. (A) Augmentation:
 
-1.  **Hybrid Search:** Aday lemmaları bulmak için iki farklı skor birleştirilir:
-    * **BM25 (Kelime Bazlı):** `rank_bm25` kütüphanesi kullanılarak sorgu metni ile lemma adı/statement'ı arasındaki anahtar kelime eşleşmesi puanlanır.
-    * **Vektör Benzerliği (Semantik):** `sentence-transformers/all-MiniLM-L6-v2` modeli kullanılarak sorgu ile lemmalar arasındaki anlamsal (semantik) yakınlık puanlanır.
+The top-3 retrieved lemmas are formatted into a structured context block. If the retrieval stage returns no valid candidates, a fallback context (Eng: "No specific lemma found in corpus...") is generated to prevent hallucination, allowing the LLM to rely on its parametric knowledge.
+### 3.3. (G) Generation:
 
-2.  **Aşırı Filtreleme (Aggressive Reranking):**
-    * Bu adaylar daha sonra `NOISE_WORDS` listesi (`_def`, `lt`, `choose` vb.) ve eleme kriterleri (örn: sorguda `*` yoksa `pow` önerme) kullanılarak elenir.
-    * Kalan adaylar, sorgudaki "niyete" (`comm`, `assoc`, `zero_add` gibi) ne kadar uyduklarına göre bonus (`S_intent`) alırlar.
-    * En yüksek `S_total` skoruna sahip Top-3 lemma LLM'e verilmek üzere seçilir.
+The augmented context and the user's original goal are fed into OpenAI GPT-4o via a custom system prompt designed to perform logical reasoning and suggest the next proof step.
 
-### 3.2. (A) Augmentation: Dinamik Prompt Oluşturma
+## 4. Results
 
-Top-3 lemma, OpenAI'ye gönderilmek üzere bir context metnine dönüştürülür. Eğer "R" adımı hiçbir lemma bulamazsa, context metni olarak "Üzgünüm, bu hedef için korpusta uygun bir lemma bulamadım." mesajı oluşturulur.
+* **Retrieval Performance (Hit@3):** On a specialized test set of 12 distinct equality goals (eval_df), the retrieval module achieved a 75% Success Rate (9/12) in placing the correct lemma within the top 3 results.
+* **RAG Robustness:** (In cases where retrieval failed)
+    * **TEST 2 (`a + 0 = a`):** Even when the retrieval stage returned irrelevant lemmas (e.g., `Nat.add_comm`), `gpt-4o` was able to handle the noisy context and generate a valid 2-step proof path.
+    * **TEST 3 (`a ^ 0 = 1`):** When the retrieval stage returned empty results, `gpt-4o` successfully fell back on its parametric knowledge, suggesting to the user: `...however, the pow_zero lemma is typically used here.`
+  
+## 5. Demo
+Due to API costs, a public live demo is currently unavailable. However, I can provide access to the live deployment upon request via ahmet.metin@sabanciuniv.edu
+OR You can run the application locally (see Section 6).
 
-### 3.3. (G) Generation: OpenAI (gpt-4o) ile Akıl Yürütme
-
-Oluşturulan bu context metni ve kullanıcının orijinal hedefi, `gpt-4o` modeline bir `system_prompt' ile birlikte gönderilir.
-
-## 4. Elde Edilen Sonuçlar
-
-* **Retriever Başarısı (Hit@3):** Geliştirme sırasında kullanılan 12 temel hedef sorgusundan oluşan `eval_df` test setinde, "R" (Retrieval) adımı **%75 (12'de 9)** oranında doğru lemmayı ilk 3'te bulmayı başarmıştır.
-* **RAG Başarısı:** "R" adımının başarısız olduğu %25'lik dilimde:
-    * **TEST 2 (`a + 0 = a`):** "R" adımı yanlış lemmalar (`Nat.add_comm`) getirse de, `gpt-4o` bu yanlış context'i kullanarak 2 adımlı geçerli bir çözüm yolu üretebilmiştir.
-    * **TEST 3 (`a ^ 0 = 1`):** "R" adımı boş dönse de, `gpt-4o` kullanıcıya `...ancak, genellikle ... pow_zero lemması kullanılır.` şeklinde bir öneride bulunmuştur.
-
-## 5. Canlı Demo
-Oluşturduğum web arayüzünü public olarak paylaşamıyorum çünkü her sorguda openai hesabımdan kredi yiyor. Bunun yerine linki maille iletebilirim. ahmet.metin@sabanciuniv.edu 
-
-Veya 6. bölümdeki şekilde yerel çalıştırabilirsiniz.
-
-### Örnek bir ekran görüntüsü
+### An example screenshot
 ![Image](https://github.com/user-attachments/assets/f5a05f09-9f5d-402d-9070-ade98d5fcdcc) 
 
-## 6. Lokal Kurulum
+## 6. Local Installation
 git clone https://github.com/nametin/lean_rag.git
 
 cd lean_rag
 
 pip install -r requirements.txt
 
-< Proje kökünde .streamlit adında yeni bir klasör oluşturun. Klasörün içerisinde secrets.toml adında bir dosya oluşturun.
-secrets.toml dosyasının içeriğine OPENAI_API_KEY = "key" şeklinde keyinizi girin. >
+<Create a .streamlit folder in the project root. Inside, create a secrets.toml file. Add your API key: OPENAI_API_KEY = "key" >
 
 streamlit run app.py
